@@ -12,7 +12,7 @@ public class UserRejectHandle implements RejectedExecutionHandler {
 
     @Override
     public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-//        logger.info("task reject" + executor.toString());
+        logger.info("task reject" + executor.toString());
 //        System.out.println("task reject" + executor.toString());
     }
 }

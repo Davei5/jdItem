@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kingstar.milldata.mapper.JdDataMapper">
+
+    <resultMap id="JdDataResult" type="JdData">
+        <result property="id" column="id" />
+        <result property="spu" column="spu" />
+        <result property="sku" column="sku" />
+        <result property="title" column="title" />
+        <result property="price" column="price" />
+        <result property="detailsUrl" column="details_url" />
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <select id="selectList" parameterType="long" resultType="com.kingstar.milldata.domain.JdData">
+        select id,spu,sku,title,price,details_url,create_time,update_time from jd_item where id > #{id} order by id limit #{pageSize}
+    </select>
+
+
+    <select id="selectBySku" resultType="long">
+        select count(sku) from jd_item
+        <where>
+            <if test="sku != null ">sku = #{sku}</if>
+        </where>
+
+    </select>
+    
+    <!-- 添加商品信息 -->
+    <insert id="insertJdData" parameterType="JdData" useGeneratedKeys="true" keyColumn="id">
+        insert into jd_item
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="spu != null ">spu,</if>
+            <if test="sku != null ">sku,</if>
+            <if test="title != null and title != '' ">title,</if>
+            <if test="price != null ">price,</if>
+            <if test="detailsUrl != null and detailsUrl != ''">details_url,</if>
+            <if test="createTime != null ">create_time,</if>
+            <if test="updateTime != null ">update_time,</if>
+        </trim>
+        <trim prefix="values(" suffix=")" suffixOverrides=",">
+            <if test="spu != null ">#{spu},</if>
+            <if test="sku != null ">#{sku},</if>
+            <if test="title != null and title != '' ">#{title},</if>
+            <if test="price != null ">#{price},</if>
+            <if test="detailsUrl != null and detailsUrl != ''">#{detailsUrl},</if>
+            <if test="createTime != null ">#{createTime},</if>
+            <if test="updateTime != null ">#{updateTime},</if>
+        </trim>
+    </insert>
+
+</mapper>

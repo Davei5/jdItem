@@ -20,10 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.util.Date;
@@ -39,101 +36,72 @@ public class JdDataTask {
     @Autowired
     private IJdDateService jdDateService;
 
-    @Scheduled(fixedDelay = 100 * 1000)
+    @Scheduled(fixedDelay = 10 * 1000)
     public void itemTask() throws Exception {
 
         //工作队列
-        BlockingDeque queue = new LinkedBlockingDeque(1000);
+        BlockingDeque queue = new LinkedBlockingDeque(500);
         UserThreadFactory userThreadFactory = new UserThreadFactory("线程池组");
         UserRejectHandle userRejectHandle = new UserRejectHandle();
-        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(50, 80, 60, TimeUnit.SECONDS,
+        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(60, 70, 60, TimeUnit.SECONDS,
                 queue, userThreadFactory, userRejectHandle);
 
         logger.info("开始爬虫");
         //引入countDownLatch进行线程同步，使主线程等待线程池的所有任务结束
-        CountDownLatch countDownLatch = new CountDownLatch(80);
+        CountDownLatch countDownLatch = new CountDownLatch(60);
 
-        for (int k = 1;k<=3;k++) {
+        File file = new File("C:\\Users\\16377\\Desktop\\list3.xlsx");
+        InputStream is = new FileInputStream(file);
+        Workbook workbook = new XSSFWorkbook(is);
 
-            File file = new File("C:\\Users\\16377\\Desktop\\list"+k+".xlsx");
-            InputStream is = new FileInputStream(file);
-            Workbook workbook = new XSSFWorkbook(is);
+        //读取工作簿的第一张表格
+        Sheet sheet = workbook.getSheetAt(0);
+        for (int i = sheet.getLastRowNum(); i >= sheet.getFirstRowNum() + 1; i--) {
 
-            //读取工作簿的第一张表格
-            Sheet sheet = workbook.getSheetAt(0);
-//            threadPoolExecutor.execute(() -> {
-                for (int i = sheet.getFirstRowNum() + 1; i <= sheet.getLastRowNum(); i++) {
+            int finalI = i;
 
-                    Row row = sheet.getRow(i);
-                    // 读取单元格内容
-                    Cell cell = row.getCell(0);
-                    //设置单元格类型
-                    cell.setCellType(CellType.STRING);
-                    //获取单元格内的关键字
-                    String value = StringUtils.trimToEmpty(cell.getStringCellValue());
-                    // 对字符串进行转码
-                    String encode = null;
-                    try {
-                        encode = URLEncoder.encode(value, "UTF-8");
-                    } catch (UnsupportedEncodingException e) {
-                        e.printStackTrace();
-                    }
-                    //拼接url
-                    String url = "https://search.jd.com/Search?keyword=" + encode + "&enc=utf-8&s=61&page=";
+            threadPoolExecutor.execute(() -> {
 
-                    for (int j = 1; j < 101; j += 2) {
+                Row row = sheet.getRow(finalI);
+                // 读取单元格内容
+                Cell cell = row.getCell(0);
+                //设置单元格类型
+                cell.setCellType(CellType.STRING);
+                //获取单元格内的关键字
+                String value = StringUtils.trimToEmpty(cell.getStringCellValue());
+                // 对字符串进行转码
+                String encode = null;
 
-                        int finalJ = j;
-                        threadPoolExecutor.execute(() -> {
-                            String html = httpUtils.doGetHtml(url + finalJ);
-                            try {
-                                //解析页面，获取商品数据并存储
-                                this.parse(html);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                            countDownLatch.countDown();
-                        });
-                    }
+                logger.info("爬取关键字为："+value);
+
+                try {
+                    encode = URLEncoder.encode(value, "UTF-8");
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
                 }
-//            });
+                //拼接url
+                String url = "https://search.jd.com/Search?keyword=" + encode + "&enc=utf-8&s=61&page=";
 
+                for (int j = 1; j < 51; j += 2) {
+
+                    int finalJ = j;
+                    String html = httpUtils.doGetHtml(url + finalJ);
+                    try {
+                        //解析页面，获取商品数据并存储
+                        parse(html);
+                    } catch (Exception e) {
+                        logger.debug("解析页面出错"+e.getMessage());
+                    }
+               }
+            });
         }
 
         try {
             countDownLatch.await();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            logger.debug(e.getMessage());
         }
         threadPoolExecutor.shutdown();
-
-        /*for (int j=urls.length-1;j>=0;j--) {
-
-            for (int i = 1; i < 201; i += 2) {
-
-                int finalJ1 = j;
-                int finalI1 = i;
-                threadPoolExecutor.execute(() -> {
-                    int finalJ = finalJ1;
-                    int finalI = finalI1;
-                    String html = httpUtils.doGetHtml(urls[finalJ] + finalI);
-                    try {
-                        //解析页面，获取商品数据并存储
-                        this.parse(html);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    countDownLatch.countDown();
-                });
-            }
-            threadPoolExecutor.shutdown();
-            try {
-                countDownLatch.await();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-        }*/
 
         //爬取列表
         //添加链接
